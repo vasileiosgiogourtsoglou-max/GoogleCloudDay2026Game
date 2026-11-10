@@ -11,9 +11,10 @@ import (
 )
 
 func main() {
-	// Initialize Classical Greek art, vector typography & procedural sound
+	// Initialize Classical Greek art, typography, procedural sound & VFX
 	render.InitAtlas()
 	render.InitFonts()
+	render.InitVFX()
 	audio.InitAudio()
 
 	title := scenes.NewTitleScene()

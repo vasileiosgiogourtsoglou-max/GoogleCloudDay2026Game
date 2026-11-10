@@ -111,6 +111,12 @@ func (s *GameplayScene) Update(dt float64) (game.StateType, bool) {
 
 	s.Player.Update(dt, inX, inY, dash)
 
+	// Dash particle trail
+	if s.Player.IsDashing && render.GlobalVFX != nil {
+		render.GlobalVFX.SpawnDashTrail(s.Player.X, s.Player.Y)
+	}
+
+	// Smooth camera follow
 	targetCamX := s.Player.X - float64(game.VirtualWidth)/2.0
 	targetCamY := s.Player.Y - float64(game.VirtualHeight)/2.0
 	s.CamX += (targetCamX - s.CamX) * (1.0 - math.Exp(-10.0*dt))
@@ -122,6 +128,10 @@ func (s *GameplayScene) Update(dt float64) (game.StateType, bool) {
 	s.updateProjectiles(dt)
 	s.updatePickups(dt)
 
+	if render.GlobalVFX != nil {
+		render.GlobalVFX.Update(dt)
+	}
+
 	if s.Player.HP <= 0 {
 		s.IsGameOver = true
 		audio.PlayExplosion()
@@ -131,8 +141,9 @@ func (s *GameplayScene) Update(dt float64) (game.StateType, bool) {
 }
 
 func (s *GameplayScene) updateWeapons(dt float64) {
+	// Focus on visible enemies on screen (range ~225 pixels)
 	var closest *entities.Enemy
-	minDist := 330.0
+	minDist := 235.0
 
 	for _, e := range s.Enemies {
 		if !e.Alive {
@@ -145,12 +156,12 @@ func (s *GameplayScene) updateWeapons(dt float64) {
 		}
 	}
 
-	// 1. Spear of Athena
+	// 1. Spear of Athena (Javelin Throw)
 	s.Player.LaserTimer -= dt
 	fireRate := math.Max(0.14, 0.38-float64(s.Player.LaserLvl)*0.04)
 	if s.Player.LaserTimer <= 0 && closest != nil {
 		s.Player.LaserTimer = fireRate
-		spearDmg := 15.0 + float64(s.Player.LaserLvl)*5.0
+		spearDmg := 16.0 + float64(s.Player.LaserLvl)*5.0
 		s.Projectiles = append(s.Projectiles, entities.NewSpear(s.Player.X, s.Player.Y, closest.X, closest.Y, spearDmg))
 		audio.PlayLaser()
 	}
@@ -165,7 +176,7 @@ func (s *GameplayScene) updateWeapons(dt float64) {
 		}
 	}
 
-	// 3. Whirling Bronze Aegis
+	// 3. Whirling Bronze Aegis (Contact Damage)
 	if s.Player.OrbitalLvl > 0 {
 		count := s.Player.OrbitalLvl + 1
 		radius := 36.0
@@ -179,7 +190,8 @@ func (s *GameplayScene) updateWeapons(dt float64) {
 					continue
 				}
 				if math.Hypot(e.X-ox, e.Y-oy) <= e.Radius+8.0 {
-					if e.TakeDamage(26.0 * dt) {
+					dmg := 26.0 * dt
+					if e.TakeDamage(dmg) {
 						s.onEnemyKilled(e)
 					}
 				}
@@ -190,13 +202,14 @@ func (s *GameplayScene) updateWeapons(dt float64) {
 
 func (s *GameplayScene) updateSpawner(dt float64) {
 	s.SpawnTimer -= dt
-	spawnInterval := math.Max(0.24, 1.2-s.Player.SurvivalTime*0.003)
+	spawnInterval := math.Max(0.24, 1.1-s.Player.SurvivalTime*0.003)
 
 	if s.SpawnTimer <= 0 {
 		s.SpawnTimer = spawnInterval
 
+		// Spawn on a visible periphery ring (~270 pixels from player) so foes march onto screen immediately
 		spawnAngle := rand.Float64() * math.Pi * 2.0
-		spawnDist := 380.0
+		spawnDist := 275.0
 		ex := s.Player.X + math.Cos(spawnAngle)*spawnDist
 		ey := s.Player.Y + math.Sin(spawnAngle)*spawnDist
 
@@ -215,7 +228,7 @@ func (s *GameplayScene) updateSpawner(dt float64) {
 
 	if !s.BossSpawned && s.Player.SurvivalTime >= 180.0 {
 		s.BossSpawned = true
-		s.Enemies = append(s.Enemies, entities.NewEnemy(entities.TypeTitan, s.Player.X+280, s.Player.Y))
+		s.Enemies = append(s.Enemies, entities.NewEnemy(entities.TypeTitan, s.Player.X+240, s.Player.Y))
 	}
 }
 
@@ -241,11 +254,10 @@ func (s *GameplayScene) updateProjectiles(dt float64) {
 			continue
 		}
 
-		// Find target for homing projectiles (e.g. Owl of Athena)
 		targetX, targetY := p.X+p.VX, p.Y+p.VY
 		if p.Type == entities.ProjOwlDart {
 			var closestEnemy *entities.Enemy
-			minDist := 450.0
+			minDist := 400.0
 			for _, e := range s.Enemies {
 				if !e.Alive {
 					continue
@@ -269,6 +281,9 @@ func (s *GameplayScene) updateProjectiles(dt float64) {
 				continue
 			}
 			if math.Hypot(e.X-p.X, e.Y-p.Y) <= e.Radius+p.Radius {
+				if render.GlobalVFX != nil {
+					render.GlobalVFX.SpawnDamageNumber(e.X, e.Y, p.Damage)
+				}
 				if e.TakeDamage(p.Damage) {
 					s.onEnemyKilled(e)
 				}
@@ -298,6 +313,12 @@ func (s *GameplayScene) updatePickups(dt float64) {
 func (s *GameplayScene) onEnemyKilled(e *entities.Enemy) {
 	s.Player.TotalKills++
 	s.Pickups = append(s.Pickups, entities.NewPickup(e.X, e.Y, e.XPAmount))
+
+	// Divine elimination burst VFX right where the enemy is defeated!
+	if render.GlobalVFX != nil {
+		render.GlobalVFX.SpawnEliminationBurst(e.X, e.Y, e.IsBoss)
+	}
+
 	if e.IsBoss {
 		s.IsVictory = true
 		audio.PlayLevelUp()
@@ -305,7 +326,8 @@ func (s *GameplayScene) onEnemyKilled(e *entities.Enemy) {
 }
 
 func (s *GameplayScene) Draw(screen *ebiten.Image) {
-	tileW := 32.0
+	// 1. Classical Greek Palace Grand Marble Slabs (64x64)
+	tileW := 64.0
 	startX := math.Floor(s.CamX/tileW)*tileW - tileW
 	startY := math.Floor(s.CamY/tileW)*tileW - tileW
 	endX := s.CamX + float64(game.VirtualWidth) + tileW
@@ -315,23 +337,65 @@ func (s *GameplayScene) Draw(screen *ebiten.Image) {
 		for tx := startX; tx <= endX; tx += tileW {
 			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Translate(tx-s.CamX, ty-s.CamY)
-			screen.DrawImage(render.Atlas.GreekTile, op)
+
+			gx := int(tx / tileW)
+			gy := int(ty / tileW)
+			pattern := int(math.Abs(float64(gx*3 + gy*5))) % 8
+
+			var slab *ebiten.Image
+			if pattern == 0 {
+				slab = render.Atlas.FloorTileB // Central Rosette
+			} else if pattern == 3 {
+				slab = render.Atlas.FloorTileC // Corner Rosettes
+			} else {
+				slab = render.Atlas.FloorTileA // Classic Meander Slab
+			}
+			screen.DrawImage(slab, op)
 		}
 	}
 
+	// 2. Courtyard Olympic Braziers with Sacred Flame
+	propSpacing := 256.0
+	pStartX := math.Floor(s.CamX/propSpacing)*propSpacing - propSpacing
+	pStartY := math.Floor(s.CamY/propSpacing)*propSpacing - propSpacing
+	pEndX := s.CamX + float64(game.VirtualWidth) + propSpacing
+	pEndY := s.CamY + float64(game.VirtualHeight) + propSpacing
+
+	for py := pStartY; py <= pEndY; py += propSpacing {
+		for px := pStartX; px <= pEndX; px += propSpacing {
+			bOp := &ebiten.DrawImageOptions{}
+			bOp.GeoM.Translate(px+20-s.CamX, py+20-s.CamY)
+			screen.DrawImage(render.Atlas.Brazier, bOp)
+		}
+	}
+
+	// 3. Pickups (Drachma Coins & Ambrosia)
 	for _, p := range s.Pickups {
 		p.Draw(screen, s.CamX, s.CamY)
 	}
+
+	// 4. Mythological Enemies
 	for _, e := range s.Enemies {
 		e.Draw(screen, s.CamX, s.CamY)
 	}
+
+	// 5. Athena Goddess
 	s.Player.Draw(screen, s.CamX, s.CamY)
+
+	// 6. Projectiles (Spears & Starlight Darts)
 	for _, pr := range s.Projectiles {
 		pr.Draw(screen, s.CamX, s.CamY)
 	}
 
+	// 7. Visual Effects: Elimination Bursts, Sparks & Floating Damage Numbers
+	if render.GlobalVFX != nil {
+		render.GlobalVFX.Draw(screen, s.CamX, s.CamY)
+	}
+
+	// 8. Classical HUD
 	s.drawHUD(screen)
 
+	// 9. Overlays
 	if s.LevelUpActive != nil {
 		s.LevelUpActive.Draw(screen)
 	} else if s.IsGameOver {

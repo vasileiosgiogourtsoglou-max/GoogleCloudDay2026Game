@@ -32,14 +32,19 @@ func (s *TitleScene) Update(dt float64) (game.StateType, bool) {
 }
 
 func (s *TitleScene) Draw(screen *ebiten.Image) {
-	// Background: Warm Classical Greek Marble Tiles
-	tilesX := game.VirtualWidth/32 + 1
-	tilesY := game.VirtualHeight/32 + 1
+	// Background: Grand Classical Greek Palace Marble Tiles
+	tileW := 64
+	tilesX := game.VirtualWidth/tileW + 1
+	tilesY := game.VirtualHeight/tileW + 1
 	for ty := 0; ty < tilesY; ty++ {
 		for tx := 0; tx < tilesX; tx++ {
 			op := &ebiten.DrawImageOptions{}
-			op.GeoM.Translate(float64(tx*32), float64(ty*32))
-			screen.DrawImage(render.Atlas.GreekTile, op)
+			op.GeoM.Translate(float64(tx*tileW), float64(ty*tileW))
+			if (tx+ty)%2 == 0 {
+				screen.DrawImage(render.Atlas.FloorTileA, op)
+			} else {
+				screen.DrawImage(render.Atlas.FloorTileB, op)
+			}
 		}
 	}
 
