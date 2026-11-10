@@ -1,0 +1,9 @@
+.gcloudignore
+.git
+.gitignore
+*.exe
+*.wasm
+*.log
+*.tmp
+node_modules/
+.venv/
