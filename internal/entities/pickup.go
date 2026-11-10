@@ -35,8 +35,14 @@ func (p *Pickup) Update(dt float64, playerX, playerY float64) bool {
 	magnetRange := 90.0
 	pickupRange := 16.0
 
-	// Magnet attraction to Athena
-	if dist <= magnetRange {
+	// Check pickup range first
+	if dist <= pickupRange {
+		p.Collected = true
+		return true // Collected!
+	}
+
+	// Magnet attraction to Athena with division-by-zero protection
+	if dist <= magnetRange && dist > 0.001 {
 		speed := 270.0
 		p.VX = (dx / dist) * speed
 		p.VY = (dy / dist) * speed
@@ -44,10 +50,6 @@ func (p *Pickup) Update(dt float64, playerX, playerY float64) bool {
 		p.Y += p.VY * dt
 	}
 
-	if dist <= pickupRange {
-		p.Collected = true
-		return true // Collected!
-	}
 	return false
 }
 

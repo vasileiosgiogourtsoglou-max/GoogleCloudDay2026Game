@@ -167,26 +167,22 @@ func (e *Enemy) Draw(screen *ebiten.Image, camX, camY float64) {
 	}
 	screen.DrawImage(sprite, op)
 
-	// Titan Boss Health Bar
-	if e.IsBoss {
+	// Titan Boss Health Bar (Zero-allocation using pre-rendered textures)
+	if e.IsBoss && render.Atlas.BossBarBg != nil {
 		barW := 70.0
-		barH := 6.0
 		bx := e.X - camX - barW/2.0
 		by := e.Y - camY - offsetY - 12.0
 		pct := math.Max(0.0, e.HP/e.MaxHP)
 
-		bg := ebiten.NewImage(int(barW), int(barH))
-		bg.Fill(render.Atlas.Shadow.At(0, 0))
 		bgOp := &ebiten.DrawImageOptions{}
 		bgOp.GeoM.Translate(bx, by)
-		screen.DrawImage(bg, bgOp)
+		screen.DrawImage(render.Atlas.BossBarBg, bgOp)
 
 		if pct > 0 {
-			fg := ebiten.NewImage(int(barW*pct), int(barH))
-			fg.Fill(render.Atlas.DrachmaLarge.At(5, 5))
 			fgOp := &ebiten.DrawImageOptions{}
+			fgOp.GeoM.Scale(pct, 1.0)
 			fgOp.GeoM.Translate(bx, by)
-			screen.DrawImage(fg, fgOp)
+			screen.DrawImage(render.Atlas.BossBarFg, fgOp)
 		}
 	}
 }

@@ -25,6 +25,16 @@ type TextureAtlas struct {
 	GreekTile     *ebiten.Image
 	GreekPillar   *ebiten.Image
 	Shadow        *ebiten.Image
+
+	// Pre-allocated UI Elements (Zero allocation in Draw loops)
+	BossBarBg      *ebiten.Image
+	BossBarFg      *ebiten.Image
+	CardBorderSel  *ebiten.Image
+	CardBorderNorm *ebiten.Image
+	CardInner      *ebiten.Image
+	ScrimDark      *ebiten.Image
+	ScrimRed       *ebiten.Image
+	ScrimGreen     *ebiten.Image
 }
 
 var Atlas *TextureAtlas
@@ -33,23 +43,51 @@ func InitAtlas() {
 	if Atlas != nil {
 		return
 	}
+
+	bossBg := ebiten.NewImage(70, 6)
+	bossBg.Fill(color.NRGBA{30, 20, 15, 240})
+	bossFg := ebiten.NewImage(70, 6)
+	bossFg.Fill(color.NRGBA{255, 60, 20, 255})
+
+	cardSel := ebiten.NewImage(184, 210)
+	cardSel.Fill(color.NRGBA{255, 215, 0, 255})
+	cardNorm := ebiten.NewImage(184, 210)
+	cardNorm.Fill(color.NRGBA{145, 110, 50, 255})
+	cardIn := ebiten.NewImage(178, 204)
+	cardIn.Fill(color.NRGBA{32, 24, 18, 255})
+
+	sDark := ebiten.NewImage(640, 360)
+	sDark.Fill(color.NRGBA{18, 14, 10, 220})
+	sRed := ebiten.NewImage(640, 360)
+	sRed.Fill(color.NRGBA{25, 15, 10, 220})
+	sGreen := ebiten.NewImage(640, 360)
+	sGreen.Fill(color.NRGBA{15, 25, 15, 220})
+
 	Atlas = &TextureAtlas{
-		AthenaIdle:    renderAthena(false),
-		AthenaDash:    renderAthena(true),
-		EnemyHoplite:  renderHoplite(),
-		EnemyMinotaur: renderMinotaur(),
-		EnemyGorgon:   renderGorgon(),
-		EnemyHarpy:    renderHarpy(),
-		EnemyTitan:    renderTitan(),
-		DrachmaSmall:  renderDrachma(color.NRGBA{212, 175, 55, 255}, 6),  // Bronze Drachma
-		DrachmaMed:    renderDrachma(color.NRGBA{255, 215, 0, 255}, 8),   // Golden Stater
-		DrachmaLarge:  renderDrachma(color.NRGBA{255, 140, 0, 255}, 10),  // Ambrosia Gem
-		SpearProj:     renderSpear(),
-		OwlProj:       renderOwl(),
-		BronzeAegis:   renderBronzeAegis(),
-		GreekTile:     renderGreekMarbleTile(),
-		GreekPillar:   renderGreekPillar(),
-		Shadow:        renderShadow(22, 9),
+		AthenaIdle:     renderAthena(false),
+		AthenaDash:     renderAthena(true),
+		EnemyHoplite:   renderHoplite(),
+		EnemyMinotaur:  renderMinotaur(),
+		EnemyGorgon:    renderGorgon(),
+		EnemyHarpy:     renderHarpy(),
+		EnemyTitan:     renderTitan(),
+		DrachmaSmall:   renderDrachma(color.NRGBA{212, 175, 55, 255}, 6), // Bronze Drachma
+		DrachmaMed:     renderDrachma(color.NRGBA{255, 215, 0, 255}, 8),  // Golden Stater
+		DrachmaLarge:   renderDrachma(color.NRGBA{255, 140, 0, 255}, 10), // Ambrosia Gem
+		SpearProj:      renderSpear(),
+		OwlProj:        renderOwl(),
+		BronzeAegis:    renderBronzeAegis(),
+		GreekTile:      renderGreekMarbleTile(),
+		GreekPillar:    renderGreekPillar(),
+		Shadow:         renderShadow(22, 9),
+		BossBarBg:      bossBg,
+		BossBarFg:      bossFg,
+		CardBorderSel:  cardSel,
+		CardBorderNorm: cardNorm,
+		CardInner:      cardIn,
+		ScrimDark:      sDark,
+		ScrimRed:       sRed,
+		ScrimGreen:     sGreen,
 	}
 }
 
