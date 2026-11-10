@@ -36,6 +36,11 @@ func (g *Game) Update() error {
 	case StateTitle:
 		nextState, change := g.titleScene.Update(dt)
 		if change {
+			if nextState == StateGameplay {
+				if r, ok := g.playScene.(interface{ Reset() }); ok {
+					r.Reset()
+				}
+			}
 			g.CurrentState = nextState
 		}
 	case StateGameplay:

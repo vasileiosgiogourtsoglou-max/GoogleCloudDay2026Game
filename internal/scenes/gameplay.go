@@ -61,6 +61,20 @@ func NewGameplayScene() *GameplayScene {
 	return s
 }
 
+func (s *GameplayScene) Reset() {
+	s.Player = entities.NewPlayer(0, 0)
+	s.Enemies = s.Enemies[:0]
+	s.Projectiles = s.Projectiles[:0]
+	s.Pickups = s.Pickups[:0]
+	s.SpawnTimer = 0.5
+	s.BossSpawned = false
+	s.IsGameOver = false
+	s.IsVictory = false
+	s.LevelUpActive = nil
+	s.CamX = 0
+	s.CamY = 0
+}
+
 func (s *GameplayScene) Update(dt float64) (game.StateType, bool) {
 	if s.LevelUpActive != nil {
 		if s.LevelUpActive.Update(s.Player) {
@@ -71,7 +85,8 @@ func (s *GameplayScene) Update(dt float64) (game.StateType, bool) {
 
 	if s.IsGameOver || s.IsVictory {
 		if inpututil.IsKeyJustPressed(ebiten.KeyR) || inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-			return game.StateTitle, true
+			s.Reset()
+			return game.StateGameplay, true
 		}
 		return game.StateGameplay, false
 	}
@@ -225,7 +240,29 @@ func (s *GameplayScene) updateProjectiles(dt float64) {
 		if !p.Active {
 			continue
 		}
-		p.Update(dt, s.Player.X, s.Player.Y)
+
+		// Find target for homing projectiles (e.g. Owl of Athena)
+		targetX, targetY := p.X+p.VX, p.Y+p.VY
+		if p.Type == entities.ProjOwlDart {
+			var closestEnemy *entities.Enemy
+			minDist := 450.0
+			for _, e := range s.Enemies {
+				if !e.Alive {
+					continue
+				}
+				d := math.Hypot(e.X-p.X, e.Y-p.Y)
+				if d < minDist {
+					minDist = d
+					closestEnemy = e
+				}
+			}
+			if closestEnemy != nil {
+				targetX = closestEnemy.X
+				targetY = closestEnemy.Y
+			}
+		}
+
+		p.Update(dt, targetX, targetY)
 
 		for _, e := range s.Enemies {
 			if !e.Alive {
@@ -355,9 +392,9 @@ func (s *GameplayScene) drawHUD(screen *ebiten.Image) {
 }
 
 func (s *GameplayScene) drawGameOver(screen *ebiten.Image) {
-	scrim := ebiten.NewImage(game.VirtualWidth, game.VirtualHeight)
-	scrim.Fill(color.NRGBA{25, 15, 10, 220})
-	screen.DrawImage(scrim, &ebiten.DrawImageOptions{})
+	if render.Atlas != nil && render.Atlas.ScrimRed != nil {
+		screen.DrawImage(render.Atlas.ScrimRed, &ebiten.DrawImageOptions{})
+	}
 
 	render.DrawCentered(screen, "ATHENA HAS FALLEN", render.Fonts.TitleLarge, float64(game.VirtualWidth/2), 95, color.NRGBA{220, 50, 40, 255})
 	render.DrawCentered(screen, "Mount Olympus Has Fallen to Mythological Beasts", render.Fonts.TitleSmall, float64(game.VirtualWidth/2), 135, color.NRGBA{235, 225, 215, 255})
@@ -369,9 +406,9 @@ func (s *GameplayScene) drawGameOver(screen *ebiten.Image) {
 }
 
 func (s *GameplayScene) drawVictory(screen *ebiten.Image) {
-	scrim := ebiten.NewImage(game.VirtualWidth, game.VirtualHeight)
-	scrim.Fill(color.NRGBA{15, 25, 15, 220})
-	screen.DrawImage(scrim, &ebiten.DrawImageOptions{})
+	if render.Atlas != nil && render.Atlas.ScrimGreen != nil {
+		screen.DrawImage(render.Atlas.ScrimGreen, &ebiten.DrawImageOptions{})
+	}
 
 	render.DrawCentered(screen, "TITAN KRONOS VANQUISHED", render.Fonts.TitleLarge, float64(game.VirtualWidth/2), 95, color.NRGBA{255, 215, 0, 255})
 	render.DrawCentered(screen, "Olympus is Victorious! Glory to the Goddess Athena!", render.Fonts.TitleSmall, float64(game.VirtualWidth/2), 135, color.NRGBA{245, 240, 230, 255})

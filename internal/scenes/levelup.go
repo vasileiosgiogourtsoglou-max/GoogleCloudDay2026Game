@@ -20,9 +20,8 @@ type UpgradeCard struct {
 }
 
 type LevelUpOverlay struct {
-	Cards     []UpgradeCard
-	Selected  int
-	darkScrim *ebiten.Image
+	Cards    []UpgradeCard
+	Selected int
 }
 
 func NewLevelUpOverlay(p *entities.Player) *LevelUpOverlay {
@@ -62,12 +61,8 @@ func NewLevelUpOverlay(p *entities.Player) *LevelUpOverlay {
 	rand.Shuffle(len(pool), func(i, j int) { pool[i], pool[j] = pool[j], pool[i] })
 	chosen := pool[:3]
 
-	scrim := ebiten.NewImage(game.VirtualWidth, game.VirtualHeight)
-	scrim.Fill(color.NRGBA{18, 14, 10, 220}) // Warm dark bronze scrim
-
 	return &LevelUpOverlay{
-		Cards:     chosen,
-		darkScrim: scrim,
+		Cards: chosen,
 	}
 }
 
@@ -127,7 +122,9 @@ func (l *LevelUpOverlay) applyUpgrade(p *entities.Player, up entities.UpgradeTyp
 }
 
 func (l *LevelUpOverlay) Draw(screen *ebiten.Image) {
-	screen.DrawImage(l.darkScrim, &ebiten.DrawImageOptions{})
+	if render.Atlas != nil && render.Atlas.ScrimDark != nil {
+		screen.DrawImage(render.Atlas.ScrimDark, &ebiten.DrawImageOptions{})
+	}
 
 	gold := color.NRGBA{255, 215, 0, 255}
 	warmWhite := color.NRGBA{245, 240, 230, 255}
@@ -137,19 +134,9 @@ func (l *LevelUpOverlay) Draw(screen *ebiten.Image) {
 	render.DrawCentered(screen, "Select a Divine Blessing from Mount Olympus", render.Fonts.TitleSmall, float64(game.VirtualWidth/2), 58, warmWhite)
 
 	cardW := 184
-	cardH := 210
 	cardGap := 16
 	startX := (game.VirtualWidth - (3*cardW + 2*cardGap)) / 2
 	cardY := 85
-
-	borderSel := ebiten.NewImage(cardW, cardH)
-	borderSel.Fill(color.NRGBA{255, 215, 0, 255}) // Radiant Olympian Gold
-
-	borderNorm := ebiten.NewImage(cardW, cardH)
-	borderNorm.Fill(color.NRGBA{145, 110, 50, 255}) // Ancient Bronze
-
-	cardInner := ebiten.NewImage(cardW-6, cardH-6)
-	cardInner.Fill(color.NRGBA{32, 24, 18, 255}) // Dark Grecian Stone Tile
 
 	for i, c := range l.Cards {
 		cx := startX + i*(cardW+cardGap)
@@ -157,14 +144,14 @@ func (l *LevelUpOverlay) Draw(screen *ebiten.Image) {
 		bOp := &ebiten.DrawImageOptions{}
 		bOp.GeoM.Translate(float64(cx), float64(cardY))
 		if i == l.Selected {
-			screen.DrawImage(borderSel, bOp)
+			screen.DrawImage(render.Atlas.CardBorderSel, bOp)
 		} else {
-			screen.DrawImage(borderNorm, bOp)
+			screen.DrawImage(render.Atlas.CardBorderNorm, bOp)
 		}
 
 		inOp := &ebiten.DrawImageOptions{}
 		inOp.GeoM.Translate(float64(cx+3), float64(cardY+3))
-		screen.DrawImage(cardInner, inOp)
+		screen.DrawImage(render.Atlas.CardInner, inOp)
 
 		numStr := string(rune('1' + i))
 		numColor := gold
